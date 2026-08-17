@@ -36,5 +36,20 @@
   <script src="budget.js"></script>
   <script src="dashboard.js"></script>
   <script src="settings.js"></script>
+  <script>
+    const drawer = document.getElementById('sidebar');
+    const backdrop = document.getElementById('drawerBackdrop');
+    const menu = document.getElementById('menuButton');
+    const closeDrawer = document.getElementById('drawerClose');
+    const syncDrawer = () => {
+      const open = drawer.classList.contains('open');
+      backdrop.classList.toggle('open', open);
+      menu.setAttribute('aria-expanded', String(open));
+    };
+    menu.addEventListener('click', () => requestAnimationFrame(syncDrawer));
+    closeDrawer.addEventListener('click', () => { drawer.classList.remove('open'); syncDrawer(); });
+    backdrop.addEventListener('click', () => { drawer.classList.remove('open'); syncDrawer(); });
+    new MutationObserver(syncDrawer).observe(drawer, { attributes:true, attributeFilter:['class'] });
+  </script>
 </body>
 </html>

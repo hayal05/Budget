@@ -58,7 +58,29 @@ function dashboardTrend() {
     <polyline points="${line('income')}" class="income-line" />
     <polyline points="${line('expenses')}" class="expense-line" />
     ${points('income')}${points('expenses')}
-  </svg></div>`;
+  </svg></div><div class="chart-legend"><span><i class="legend-income"></i>Income trend</span><span><i class="legend-expense"></i>Expense trend</span></div>`;
+}
+
+function dashboardCircleChart() {
+  const expenses = dashboardCategoryTotals(data.expenses).slice(0, 5);
+  const total = expenses.reduce((sum, [, amount]) => sum + amount, 0);
+  if (!total) return `<article class="card circle-card"><h2>Expense breakdown</h2><div class="circle-empty">No expenses yet.</div></article>`;
+
+  const stops = [];
+  let start = 0;
+  expenses.forEach(([category, amount], index) => {
+    const end = start + (amount / total) * 100;
+    const hue = [24, 32, 16, 40, 8][index] || 24;
+    stops.push(`hsl(${hue} 90% 55%) ${start}% ${end}%`);
+    start = end;
+  });
+
+  return `<article class="card circle-card"><h2>Expense breakdown</h2>
+    <div class="circle-layout">
+      <div class="donut-chart" style="background:conic-gradient(${stops.join(',')})" role="img" aria-label="Expense breakdown by category"><span>${formatMoney(total)}</span></div>
+      <div class="circle-legend">${expenses.map(([category, amount], index) => `<div><i style="background:hsl(${[24,32,16,40,8][index] || 24} 90% 55%)"></i><span>${escapeHtml(category)}</span><strong>${formatMoney(amount)}</strong></div>`).join('')}</div>
+    </div>
+  </article>`;
 }
 
 function dashboardAnalyticsCards() {
@@ -72,7 +94,7 @@ function dashboardAnalyticsCards() {
     <article class="card analytics-card"><h2>Major income sources</h2>${topIncome.length ? `<div class="analytics-list">${topIncome.map(([category, amount]) => `
       <div class="analytics-row"><strong>${escapeHtml(category)}</strong><strong class="positive">${formatMoney(amount)}</strong></div>
     `).join('')}</div>` : '<div class="empty">No income yet.</div>'}</article>
-  </div>`;
+  </div>${dashboardCircleChart()}`;
 }
 
 function dashboardBudgetOverview() {

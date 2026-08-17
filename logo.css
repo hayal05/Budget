@@ -1,15 +1,16 @@
-/* NATRA Budget logo — exact uploaded artwork embedded directly in CSS */
+/* NATRA Budget logo — CSS background, using the logo file already stored in assets */
 .brand-logo,.header-logo{
   display:block !important;
-  flex:0 0 auto;
+  flex:0 0 auto !important;
+  width:auto;
+  height:auto;
   font-size:0;
   color:transparent;
-  background-image:url("data:image/png;base64," + b64 + "");
-  background-repeat:no-repeat;
-  background-position:center center;
+  background-image:url('./assets/natra-budget-logo.png') !important;
+  background-repeat:no-repeat !important;
+  background-position:center center !important;
   background-color:#000;
-  background-clip:padding-box;
-  background-size:200px 200px;
+  background-size:200px 200px !important;
   overflow:hidden;
 }
 .brand-logo{
@@ -20,19 +21,17 @@
   width:138px !important;
   height:52px !important;
 }
-.topbar{
-  gap:12px;
-}
+.topbar{gap:12px}
 @media(max-width:700px){
   .brand-logo{
     width:150px !important;
     height:46px !important;
-    background-size:185px 185px;
+    background-size:185px 185px !important;
   }
   .header-logo{
     width:112px !important;
     height:42px !important;
-    background-size:175px 175px;
+    background-size:175px 175px !important;
   }
   .topbar{gap:8px}
 }

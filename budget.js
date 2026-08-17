@@ -1,9 +1,10 @@
 function budgetProgress(budget) {
   const spent = data.expenses
     .filter(item => item.category === budget.category)
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-  const remaining = Number(budget.amount) - spent;
-  const percent = Number(budget.amount) > 0 ? Math.min((spent / Number(budget.amount)) * 100, 100) : 0;
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const amount = Number(budget.amount || 0);
+  const remaining = amount - spent;
+  const percent = amount > 0 ? Math.min((spent / amount) * 100, 100) : 0;
   return { spent, remaining, percent };
 }
 
@@ -64,7 +65,7 @@ pageContent.addEventListener('submit', event => {
 
   const values = Object.fromEntries(new FormData(form).entries());
   const amount = Number(values.amount);
-  if (!Number.isFinite(amount) || amount <= 0) return;
+  if (!Number.isFinite(amount) || amount <= 0 || !values.category) return;
 
   const existing = data.budgets.find(item => item.category === values.category);
   if (existing) {

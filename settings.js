@@ -86,3 +86,48 @@ pageContent.addEventListener('change', event => {
   };
   reader.readAsText(event.target.files[0]);
 });
+
+/* Live recalculation and synchronization.
+   Every data mutation immediately refreshes the visible page, so the app
+   behaves like a spreadsheet without requiring manual page refreshes. */
+(() => {
+  const originalSaveData = window.saveData;
+  const originalShowPage = window.showPage;
+  let currentPage = 'dashboard';
+  let rendering = false;
+
+  if (typeof originalShowPage === 'function') {
+    window.showPage = function liveShowPage(name) {
+      currentPage = name || 'dashboard';
+      return originalShowPage.call(this, currentPage);
+    };
+  }
+
+  if (typeof originalSaveData === 'function') {
+    window.saveData = function liveSaveData(...args) {
+      const result = originalSaveData.apply(this, args);
+      window.dispatchEvent(new CustomEvent('budget:data-changed'));
+      return result;
+    };
+  }
+
+  function refreshVisiblePage() {
+    if (rendering || typeof window.showPage !== 'function') return;
+    rendering = true;
+    try {
+      window.showPage(currentPage);
+    } finally {
+      rendering = false;
+    }
+  }
+
+  window.addEventListener('budget:data-changed', () => {
+    requestAnimationFrame(refreshVisiblePage);
+  });
+
+  window.addEventListener('storage', event => {
+    if (event.key !== 'budget_data_v1' || typeof window.loadData !== 'function') return;
+    data = window.loadData();
+    requestAnimationFrame(refreshVisiblePage);
+  });
+})();

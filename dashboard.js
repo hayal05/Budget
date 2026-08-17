@@ -85,14 +85,18 @@ function enhanceDashboard() {
     chartCard.classList.add('primary-chart-card');
   }
 
-  if (recentCard) {
-    recentCard.classList.add('recent-card');
-    recentCard.remove();
-  }
+  if (recentCard) recentCard.remove();
 
   const content = document.getElementById('pageContent');
   if (content) {
-    content.insertAdjacentHTML('beforeend', `<div class="dashboard-secondary"><div class="top-analytics-grid">${dashboardCircleChart()}${dashboardAnalyticsCards()}</div>${dashboardBudgetOverview()}<article class="card recent-card-bottom"><div class="section-heading"><div><h2>Recent transactions</h2><p class="muted">Latest financial activity</p></div><span class="badge">Live</span></div>${renderRecentActivity(8)}</article></div>`);
+    const topAnalytics = document.createElement('div');
+    topAnalytics.className = 'top-analytics-grid';
+    const donut = dashboardCircleChart();
+    const mainChart = chartCard ? chartCard.outerHTML : '';
+    if (chartCard) chartCard.remove();
+    topAnalytics.innerHTML = `<div class="top-chart-slot">${mainChart}</div><div class="top-donut-slot">${donut}</div>`;
+    content.appendChild(topAnalytics);
+    content.insertAdjacentHTML('beforeend', `<div class="dashboard-secondary">${dashboardAnalyticsCards()}${dashboardBudgetOverview()}<article class="card recent-card-bottom"><div class="section-heading"><div><h2>Recent transactions</h2><p class="muted">Latest financial activity</p></div><span class="badge">Live</span></div>${renderRecentActivity(8)}</article></div>`);
   }
 }
 

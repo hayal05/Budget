@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Simple offline personal budgeting app">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <title>Budget</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">Budget</div>
+      <nav class="nav" aria-label="Main navigation">
+        <button class="nav-item active" data-page="dashboard">Dashboard</button>
+        <button class="nav-item" data-page="income">Income</button>
+        <button class="nav-item" data-page="expenses">Expenses</button>
+        <button class="nav-item" data-page="budget">Budget</button>
+        <button class="nav-item" data-page="settings">Settings</button>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="menu-button" id="menuButton" aria-label="Open menu">☰</button>
+        <div>
+          <p class="eyebrow">Personal finance</p>
+          <h1 id="pageTitle">Dashboard</h1>
+        </div>
+      </header>
+
+      <section id="pageContent" class="page-content"></section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

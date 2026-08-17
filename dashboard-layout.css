@@ -1,0 +1,4 @@
+/* Dashboard positioning only: keep the existing cards/styles, stack the expense mix below the bar graph. */
+.top-analytics-grid {
+  grid-template-columns: 1fr !important;
+}

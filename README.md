@@ -1,22 +1,24 @@
 # Budget
 
-Simple offline-first individual budgeting app.
+A simple offline-first individual budgeting app.
 
-## Phase 1
+## Current features
 
-- Dashboard shell
-- Income page shell
-- Expenses page shell
-- Budget page shell
-- Settings page shell
-- Responsive sidebar
-- Offline web-app foundation with service worker
+- Dashboard with income, expenses, balance, monthly bar chart and six-month trend
+- Major expense categories and income sources
+- Income records with add, edit and delete
+- Expense records with add, edit and delete
+- Category budgets with spending, remaining amount and progress
+- Currency preference
+- JSON export/import backup
+- Full local data storage with no server or account required
+- Responsive sidebar for desktop and mobile
+- Installable PWA foundation
 
-## Next phases
+## Offline behavior
 
-1. Local data storage
-2. Working income and expense records
-3. Budget calculations
-4. Dashboard analytics and charts
-5. Settings and data export
-6. Testing and packaging
+Financial data is stored locally on the device using browser storage. The service worker caches the application files so the app can continue to open without an internet connection after it has been loaded once.
+
+## Development status
+
+Core functionality is implemented. The next stage is final testing across browsers/devices and production packaging.

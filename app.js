@@ -101,6 +101,26 @@ function renderIncomeHistory() {
     `).join('')}</div>`;
 }
 
+function renderExpenseHistory() {
+  if (!data.expenses.length) return '<div class="empty">No expenses recorded yet.</div>';
+
+  return `<div class="transaction-list">${[...data.expenses]
+    .sort((a, b) => `${b.date}${b.createdAt}`.localeCompare(`${a.date}${a.createdAt}`))
+    .map(item => `
+      <div class="transaction-row">
+        <div>
+          <strong>${escapeHtml(item.category)}</strong>
+          <span class="muted">${formatDate(item.date)}${item.note ? ` · ${escapeHtml(item.note)}` : ''}</span>
+        </div>
+        <div class="transaction-actions">
+          <strong class="negative">-${formatMoney(item.amount)}</strong>
+          <button class="text-button" type="button" data-edit-expense="${item.id}">Edit</button>
+          <button class="text-button danger" type="button" data-delete-expense="${item.id}">Delete</button>
+        </div>
+      </div>
+    `).join('')}</div>`;
+}
+
 const pages = {
   dashboard: {
     title: 'Dashboard',
@@ -167,14 +187,30 @@ const pages = {
       <article class="card form-card">
         <h2>Add expense</h2>
         <form class="form-grid" id="expenseForm">
-          <label>Category<select name="category"><option>Food</option><option>Transport</option><option>Housing</option><option>Utilities</option><option>Other</option></select></label>
-          <label>Amount<input name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required></label>
-          <label>Date<input name="date" type="date" value="${today()}" required></label>
-          <label>Note<input name="note" type="text" maxlength="120" placeholder="Optional"></label>
+          <label>Category
+            <select name="category" required>
+              <option>Food</option><option>Transport</option><option>Housing</option><option>Utilities</option><option>Shopping</option><option>Health</option><option>Other</option>
+            </select>
+          </label>
+          <label>Amount
+            <input name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required>
+          </label>
+          <label>Date
+            <input name="date" type="date" value="${today()}" required>
+          </label>
+          <label>Note
+            <input name="note" type="text" maxlength="120" placeholder="Optional">
+          </label>
           <button class="primary-button" type="submit">Add expense</button>
         </form>
       </article>
-      <article class="card list-card"><h2>Expense history</h2><div class="empty">Expense tracking will be connected in the next phase.</div></article>
+
+      <article class="card list-card">
+        <div class="section-heading">
+          <div><h2>Expense history</h2><p class="muted">${data.expenses.length} record${data.expenses.length === 1 ? '' : 's'}</p></div>
+        </div>
+        ${renderExpenseHistory()}
+      </article>
     `
   },
 
@@ -235,20 +271,24 @@ pageContent.addEventListener('submit', event => {
   const form = event.target;
   const values = Object.fromEntries(new FormData(form).entries());
 
-  if (form.id === 'incomeForm') {
+  if (form.id === 'incomeForm' || form.id === 'expenseForm') {
     const amount = Number(values.amount);
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!Number.isFinite(amount) || amount <= 0 || !values.date) return;
 
-    data.income.push({
+    const transaction = {
       id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
       category: values.category,
       amount,
       date: values.date,
       note: values.note.trim(),
       createdAt: Date.now()
-    });
+    };
+
+    if (form.id === 'incomeForm') data.income.push(transaction);
+    else data.expenses.push(transaction);
+
     saveData();
-    showPage('income');
+    showPage(form.id === 'incomeForm' ? 'income' : 'expenses');
     return;
   }
 
@@ -260,23 +300,32 @@ pageContent.addEventListener('submit', event => {
 });
 
 pageContent.addEventListener('click', event => {
-  const editButton = event.target.closest('[data-edit-income]');
-  const deleteButton = event.target.closest('[data-delete-income]');
+  const editIncome = event.target.closest('[data-edit-income]');
+  const deleteIncome = event.target.closest('[data-delete-income]');
+  const editExpense = event.target.closest('[data-edit-expense]');
+  const deleteExpense = event.target.closest('[data-delete-expense]');
 
-  if (deleteButton) {
-    const id = deleteButton.dataset.deleteIncome;
-    if (!confirm('Delete this income record?')) return;
-    data.income = data.income.filter(item => item.id !== id);
+  if (deleteIncome || deleteExpense) {
+    const id = (deleteIncome || deleteExpense).dataset.deleteIncome || (deleteIncome || deleteExpense).dataset.deleteExpense;
+    const isIncome = Boolean(deleteIncome);
+    if (!confirm(`Delete this ${isIncome ? 'income' : 'expense'} record?`)) return;
+
+    if (isIncome) data.income = data.income.filter(item => item.id !== id);
+    else data.expenses = data.expenses.filter(item => item.id !== id);
+
     saveData();
-    showPage('income');
+    showPage(isIncome ? 'income' : 'expenses');
     return;
   }
 
-  if (editButton) {
-    const item = data.income.find(entry => entry.id === editButton.dataset.editIncome);
+  if (editIncome || editExpense) {
+    const isIncome = Boolean(editIncome);
+    const id = (editIncome || editExpense).dataset.editIncome || (editIncome || editExpense).dataset.editExpense;
+    const collection = isIncome ? data.income : data.expenses;
+    const item = collection.find(entry => entry.id === id);
     if (!item) return;
 
-    const category = prompt('Income category:', item.category);
+    const category = prompt(`${isIncome ? 'Income' : 'Expense'} category:`, item.category);
     if (category === null || !category.trim()) return;
     const amount = Number(prompt('Amount:', item.amount));
     if (!Number.isFinite(amount) || amount <= 0) return;
@@ -286,7 +335,7 @@ pageContent.addEventListener('click', event => {
 
     Object.assign(item, { category: category.trim(), amount, date, note: note ?? item.note });
     saveData();
-    showPage('income');
+    showPage(isIncome ? 'income' : 'expenses');
   }
 });
 

@@ -26,7 +26,6 @@
       </nav>
     </aside>
     <div class="drawer-backdrop" id="drawerBackdrop"></div>
-
     <main class="main-content">
       <header class="topbar">
         <button class="menu-button" id="menuButton" aria-label="Open menu" aria-expanded="false">☰</button>
@@ -37,21 +36,17 @@
       <footer class="site-footer">powered by NATRA Technology ©2026</footer>
     </main>
   </div>
-
   <script src="app.js"></script>
   <script src="budget.js"></script>
   <script src="dashboard.js"></script>
   <script src="settings.js"></script>
+  <script src="i18n.js"></script>
   <script>
     const drawer = document.getElementById('sidebar');
     const backdrop = document.getElementById('drawerBackdrop');
     const menu = document.getElementById('menuButton');
     const closeDrawer = document.getElementById('drawerClose');
-    const syncDrawer = () => {
-      const open = drawer.classList.contains('open');
-      backdrop.classList.toggle('open', open);
-      menu.setAttribute('aria-expanded', String(open));
-    };
+    const syncDrawer = () => { const open = drawer.classList.contains('open'); backdrop.classList.toggle('open', open); menu.setAttribute('aria-expanded', String(open)); };
     menu.addEventListener('click', () => requestAnimationFrame(syncDrawer));
     closeDrawer.addEventListener('click', () => { drawer.classList.remove('open'); syncDrawer(); });
     backdrop.addEventListener('click', () => { drawer.classList.remove('open'); syncDrawer(); });

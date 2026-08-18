@@ -60,6 +60,10 @@
     closeDrawer.addEventListener('click', () => { drawer.classList.remove('open'); syncDrawer(); });
     backdrop.addEventListener('click', () => { drawer.classList.remove('open'); syncDrawer(); });
     new MutationObserver(syncDrawer).observe(drawer, { attributes:true, attributeFilter:['class'] });
+    const hideLoading = () => { const loading = document.getElementById('appLoading'); if (loading) { loading.classList.add('hide'); setTimeout(() => loading.remove(), 400); } };
+    const loadingWatcher = new MutationObserver(() => { if (document.getElementById('pageContent')?.innerHTML.trim()) { loadingWatcher.disconnect(); hideLoading(); } });
+    loadingWatcher.observe(document.getElementById('pageContent'), { childList:true });
+    setTimeout(hideLoading, 6000);
   </script>
 </body>
 </html>

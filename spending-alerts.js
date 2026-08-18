@@ -1,43 +1,38 @@
-/* Offline spending comparison + Median/OneSignal alert bridge.
-   The app remains fully local. When the Median native app is online, the
-   current alert state is synced to OneSignal as user tags. OneSignal can
-   use those tags to trigger native push Journeys.
-*/
+/* Offline spending comparison + Median/OneSignal alert bridge. */
 (function () {
   const DB_NAME = 'BudgetAppDB';
   const DB_VERSION = 1;
   const DB_STORE = 'appState';
+  const STATE_KEY = 'state';
   const ALERT_KEY = 'spending_alert_state';
   const CHECK_MS = 15000;
 
-  function openAlertDB() {
+  function openDB() {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error || new Error('Alert database unavailable'));
+      request.onerror = () => reject(request.error || new Error('Budget database unavailable'));
     });
   }
 
-  async function readAlertState() {
+  async function readKey(key) {
     try {
-      const db = await openAlertDB();
+      const db = await openDB();
       return await new Promise((resolve, reject) => {
         const tx = db.transaction(DB_STORE, 'readonly');
-        const req = tx.objectStore(DB_STORE).get(ALERT_KEY);
-        req.onsuccess = () => resolve(req.result || { sent: {}, current: null });
+        const req = tx.objectStore(DB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
       });
-    } catch (_) {
-      return { sent: {}, current: null };
-    }
+    } catch (_) { return null; }
   }
 
-  async function writeAlertState(value) {
+  async function writeKey(key, value) {
     try {
-      const db = await openAlertDB();
+      const db = await openDB();
       await new Promise((resolve, reject) => {
         const tx = db.transaction(DB_STORE, 'readwrite');
-        tx.objectStore(DB_STORE).put(value, ALERT_KEY);
+        tx.objectStore(DB_STORE).put(value, key);
         tx.oncomplete = resolve;
         tx.onerror = () => reject(tx.error);
       });
@@ -49,12 +44,10 @@
   }
 
   function monthTotal(expenses, year, month) {
-    return expenses
-      .filter(item => {
-        const d = new Date(`${item.date}T00:00:00`);
-        return d.getFullYear() === year && d.getMonth() === month;
-      })
-      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    return expenses.filter(item => {
+      const d = new Date(`${item.date}T00:00:00`);
+      return d.getFullYear() === year && d.getMonth() === month;
+    }).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   }
 
   function calculate(expenses) {
@@ -73,40 +66,33 @@
   }
 
   function medianReady() {
-    return typeof window !== 'undefined' && window.median && window.median.onesignal;
+    return Boolean(window.median && window.median.onesignal);
   }
 
   async function syncNativeAlert(result) {
     if (!medianReady() || !navigator.onLine) return false;
     try {
-      // Native Median OneSignal integration. Tags sync when connectivity returns.
-      await window.median.onesignal.tags.setTags({
-        tags: {
-          budget_spending_alert: result.level,
-          budget_spending_percent: Number(result.percent.toFixed(1)).toString(),
-          budget_spending_month: result.month
-        }
-      });
+      await window.median.onesignal.tags.setTags({ tags: {
+        budget_spending_alert: result.level,
+        budget_spending_percent: Number(result.percent.toFixed(1)).toString(),
+        budget_spending_month: result.month
+      }});
       return true;
-    } catch (_) {
-      return false;
-    }
+    } catch (_) { return false; }
   }
 
   async function checkSpendingAlert() {
-    if (!window.data || !Array.isArray(window.data.expenses)) return;
-    const result = calculate(window.data.expenses);
-    const state = await readAlertState();
+    const appState = await readKey(STATE_KEY);
+    const expenses = Array.isArray(appState?.expenses) ? appState.expenses : [];
+    const result = calculate(expenses);
+    const state = (await readKey(ALERT_KEY)) || { sent: {}, current: null };
     const key = `${result.month}:${result.level}`;
 
     state.current = result;
-
-    // Only create one alert for each threshold in a month.
     if (result.level !== 'normal' && !state.sent[key]) {
       state.sent[key] = { queuedAt: Date.now(), result };
     }
 
-    // Always sync the current status when the native app reconnects.
     const synced = await syncNativeAlert(result);
     if (synced) {
       Object.keys(state.sent).forEach(k => {
@@ -114,12 +100,10 @@
       });
     }
 
-    await writeAlertState(state);
+    await writeKey(ALERT_KEY, state);
     window.dispatchEvent(new CustomEvent('budgetSpendingAlertUpdated', { detail: result }));
   }
 
-  // Median push notifications are native. Keep foreground alerts enabled so
-  // an arriving OneSignal notification is not silently suppressed in-app.
   function configureMedian() {
     if (!medianReady()) return;
     try { window.median.onesignal.enableForegroundNotifications(true); } catch (_) {}
@@ -127,8 +111,11 @@
 
   window.budgetSpendingAlert = {
     check: checkSpendingAlert,
-    calculate: () => calculate(Array.isArray(window.data?.expenses) ? window.data.expenses : []),
-    getState: readAlertState
+    calculate: async () => {
+      const appState = await readKey(STATE_KEY);
+      return calculate(Array.isArray(appState?.expenses) ? appState.expenses : []);
+    },
+    getState: () => readKey(ALERT_KEY)
   };
 
   window.addEventListener('online', () => { configureMedian(); checkSpendingAlert(); });

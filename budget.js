@@ -1,131 +1,30 @@
 function budgetIncomeLimit(excludeId = null) {
   const income = data.income.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const saving = Number(data.settings?.plannedSaving || 0);
+  const availableAfterSaving = Math.max(income - saving, 0);
   const allocated = data.budgets.filter(item => item.id !== excludeId).reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  return { income, allocated, remaining: Math.max(income - allocated, 0) };
+  return { income, saving, availableAfterSaving, allocated, remaining: Math.max(availableAfterSaving - allocated, 0) };
 }
-
 function budgetProgress(budget) {
-  const spent = data.expenses
-    .filter(item => item.category === budget.category)
-    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const amount = Number(budget.amount || 0);
-  const remaining = amount - spent;
-  const percent = amount > 0 ? Math.min((spent / amount) * 100, 100) : 0;
-  return { spent, remaining, percent };
+  const spent = data.expenses.filter(item => item.category === budget.category).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const amount = Number(budget.amount || 0); const remaining = amount - spent;
+  return { spent, remaining, percent: amount > 0 ? Math.min((spent / amount) * 100, 100) : 0 };
 }
-
 function renderBudgetHistory() {
   if (!data.budgets.length) return '<div class="empty">No budgets set yet.</div>';
-
-  const { income, allocated } = budgetIncomeLimit();
-  const overIncome = allocated > income;
-
-  return `${overIncome ? `<div class="empty negative">Your current budgets exceed total income by ${formatMoney(allocated - income)}. Reduce a budget before adding more.</div>` : ''}<div class="transaction-list">${data.budgets.map(budget => {
-    const { spent, remaining, percent } = budgetProgress(budget);
-    const over = remaining < 0;
-    return `
-      <div class="transaction-row budget-row">
-        <div class="budget-main">
-          <strong>${escapeHtml(budget.category)}</strong>
-          <span class="muted">Spent ${formatMoney(spent)} of ${formatMoney(budget.amount)}</span>
-          <div class="progress-track" aria-label="${Math.round(percent)} percent spent">
-            <div class="progress-fill ${over ? 'over' : ''}" style="width:${percent}%"></div>
-          </div>
-          <span class="muted ${over ? 'negative' : 'positive'}">
-            ${over ? `${formatMoney(Math.abs(remaining))} over budget` : `${formatMoney(remaining)} remaining`}
-          </span>
-        </div>
-        <div class="transaction-actions">
-          <button class="text-button" type="button" data-edit-budget="${budget.id}">Edit</button>
-          <button class="text-button danger" type="button" data-delete-budget="${budget.id}">Delete</button>
-        </div>
-      </div>`;
-  }).join('')}</div>`;
+  const { income, saving, allocated } = budgetIncomeLimit(); const available = Math.max(income - saving, 0);
+  const overIncome = allocated > available;
+  return `${overIncome ? `<div class="empty negative">Your budgets exceed the amount available after saving by ${formatMoney(allocated - available)}. Reduce a budget before adding more.</div>` : ''}<div class="transaction-list">${data.budgets.map(budget => { const { spent, remaining, percent } = budgetProgress(budget); const over = remaining < 0; return `<div class="transaction-row budget-row"><div class="budget-main"><strong>${escapeHtml(budget.category)}</strong><span class="muted">Spent ${formatMoney(spent)} of ${formatMoney(budget.amount)}</span><div class="progress-track" aria-label="${Math.round(percent)} percent spent"><div class="progress-fill ${over ? 'over' : ''}" style="width:${percent}%"></div></div><span class="muted ${over ? 'negative' : 'positive'}">${over ? `${formatMoney(Math.abs(remaining))} over budget` : `${formatMoney(remaining)} remaining`}</span></div><div class="transaction-actions"><button class="text-button" type="button" data-edit-budget="${budget.id}">Edit</button><button class="text-button danger" type="button" data-delete-budget="${budget.id}">Delete</button></div></div>`; }).join('')}</div>`;
 }
-
 pages.budget.render = () => {
-  const { income, allocated, remaining } = budgetIncomeLimit();
-  const incomeMessage = income > 0
-    ? `<p class="muted">Total income: <strong>${formatMoney(income)}</strong> · Budgeted: <strong>${formatMoney(allocated)}</strong> · Available to budget: <strong class="${remaining > 0 ? 'positive' : ''}">${formatMoney(remaining)}</strong></p>`
-    : '<p class="muted">Add income first. Your total income determines the maximum amount you can budget.</p>';
-
-  return `
-  <article class="card form-card">
-    <h2>Set a budget</h2>
-    ${incomeMessage}
-    <form class="form-grid" id="budgetForm">
-      <label>Category
-        <select name="category" required>
-          <option>Food</option><option>Transport</option><option>Housing</option><option>Utilities</option><option>Shopping</option><option>Health</option><option>Other</option>
-        </select>
-      </label>
-      <label>Budget amount
-        <input name="amount" type="number" min="0.01" max="${remaining || 0}" step="0.01" placeholder="${remaining > 0 ? '0.00' : 'No amount available'}" ${income <= 0 || remaining <= 0 ? 'disabled' : ''} required>
-      </label>
-      <button class="primary-button" type="submit" ${income <= 0 || remaining <= 0 ? 'disabled' : ''}>Save budget</button>
-    </form>
-  </article>
-
-  <article class="card list-card">
-    <div class="section-heading">
-      <div><h2>Your budgets</h2><p class="muted">${data.budgets.length} budget${data.budgets.length === 1 ? '' : 's'}</p></div>
-    </div>
-    ${renderBudgetHistory()}
-  </article>
-`;
+  const { income, saving, availableAfterSaving, allocated, remaining } = budgetIncomeLimit();
+  const savingValue = Number(data.settings?.plannedSaving || 0);
+  const savingPercent = income > 0 ? Math.min((savingValue / income) * 100, 100) : 0;
+  return `<div class="budget-summary-cards"><article class="card budget-summary-card"><span class="stat-label">Total income</span><strong class="stat-value">${formatMoney(income)}</strong><span class="muted">All recorded income</span></article><article class="card budget-summary-card"><span class="stat-label">Planned saving</span><strong class="stat-value">${formatMoney(savingValue)}</strong><span class="muted">${income > 0 ? `${savingPercent.toFixed(1)}% of income` : 'Set your saving target'}</span></article></div><article class="card form-card"><h2>Budget plan</h2><p class="muted">Income: <strong>${formatMoney(income)}</strong> · Saving: <strong>${formatMoney(savingValue)}</strong> · Available for expenses: <strong class="positive">${formatMoney(availableAfterSaving)}</strong> · Remaining: <strong>${formatMoney(remaining)}</strong></p><form class="form-grid" id="savingForm"><label>Planned saving<input name="plannedSaving" type="number" min="0" max="${income}" step="0.01" value="${savingValue.toFixed(2)}" placeholder="0.00" ${income <= 0 ? 'disabled' : ''}></label><button class="primary-button" type="submit" ${income <= 0 ? 'disabled' : ''}>Save plan</button></form></article><article class="card form-card"><h2>Set a budget</h2><p class="muted">Category budgets can use up to <strong>${formatMoney(availableAfterSaving)}</strong> after saving.</p><form class="form-grid" id="budgetForm"><label>Category<select name="category" required><option>Food</option><option>Transport</option><option>Housing</option><option>Utilities</option><option>Shopping</option><option>Health</option><option>Other</option></select></label><label>Budget amount<input name="amount" type="number" min="0.01" max="${remaining || 0}" step="0.01" placeholder="${remaining > 0 ? '0.00' : 'No amount available'}" ${income <= 0 || remaining <= 0 ? 'disabled' : ''} required></label><button class="primary-button" type="submit" ${income <= 0 || remaining <= 0 ? 'disabled' : ''}>Save budget</button></form></article><article class="card list-card"><div class="section-heading"><div><h2>Your budgets</h2><p class="muted">${data.budgets.length} budget${data.budgets.length === 1 ? '' : 's'}</p></div></div>${renderBudgetHistory()}</article>`;
 };
-
-pageContent.addEventListener('submit', event => {
+pageContent.addEventListener('submit', async event => {
   const form = event.target;
-  if (form.id !== 'budgetForm') return;
-  event.preventDefault();
-
-  const values = Object.fromEntries(new FormData(form).entries());
-  const amount = Number(values.amount);
-  if (!Number.isFinite(amount) || amount <= 0 || !values.category) return;
-
-  const existing = data.budgets.find(item => item.category === values.category);
-  const { income, allocated, remaining } = budgetIncomeLimit(existing?.id || null);
-  if (income <= 0) { alert('Add income before setting a budget.'); return; }
-  if (amount > remaining) { alert(`This budget exceeds the income available for budgeting. You can allocate up to ${formatMoney(remaining)}.`); return; }
-
-  if (existing) {
-    existing.amount = amount;
-  } else {
-    data.budgets.push({
-      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-      category: values.category,
-      amount,
-      createdAt: Date.now()
-    });
-  }
-
-  saveData();
-  showPage('budget');
+  if (form.id === 'savingForm') { event.preventDefault(); const amount = Number(new FormData(form).get('plannedSaving')); const income = data.income.reduce((sum, item) => sum + Number(item.amount || 0), 0); if (!Number.isFinite(amount) || amount < 0 || amount > income) { alert(`Saving must be between 0 and ${formatMoney(income)}.`); return; } data.settings.plannedSaving = amount; await saveData(); showPage('budget'); return; }
+  if (form.id !== 'budgetForm') return; event.preventDefault(); const values = Object.fromEntries(new FormData(form).entries()); const amount = Number(values.amount); if (!Number.isFinite(amount) || amount <= 0 || !values.category) return; const existing = data.budgets.find(item => item.category === values.category); const { income, remaining } = budgetIncomeLimit(existing?.id || null); if (income <= 0) { alert('Add income before setting a budget.'); return; } if (amount > remaining) { alert(`This budget exceeds the amount available after saving. You can allocate up to ${formatMoney(remaining)}.`); return; } if (existing) existing.amount = amount; else data.budgets.push({ id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, category: values.category, amount, createdAt: Date.now() }); await saveData(); showPage('budget');
 });
-
-pageContent.addEventListener('click', event => {
-  const edit = event.target.closest('[data-edit-budget]');
-  const remove = event.target.closest('[data-delete-budget]');
-
-  if (remove) {
-    const id = remove.dataset.deleteBudget;
-    if (!confirm('Delete this budget?')) return;
-    data.budgets = data.budgets.filter(item => item.id !== id);
-    saveData();
-    showPage('budget');
-    return;
-  }
-
-  if (edit) {
-    const item = data.budgets.find(entry => entry.id === edit.dataset.editBudget);
-    if (!item) return;
-    const { income, remaining } = budgetIncomeLimit(item.id);
-    const amount = Number(prompt(`Budget amount (maximum ${formatMoney(income)} total income; ${formatMoney(remaining)} available):`, item.amount));
-    if (!Number.isFinite(amount) || amount <= 0) return;
-    if (amount > remaining) { alert(`This budget exceeds the remaining amount available from income: ${formatMoney(remaining)}.`); return; }
-    item.amount = amount;
-    saveData();
-    showPage('budget');
-  }
-});
+pageContent.addEventListener('click', event => { const edit = event.target.closest('[data-edit-budget]'); const remove = event.target.closest('[data-delete-budget]'); if (remove) { const id = remove.dataset.deleteBudget; if (!confirm('Delete this budget?')) return; data.budgets = data.budgets.filter(item => item.id !== id); saveData(); showPage('budget'); return; } if (edit) { const item = data.budgets.find(entry => entry.id === edit.dataset.editBudget); if (!item) return; const { remaining } = budgetIncomeLimit(item.id); const amount = Number(prompt(`Budget amount (${formatMoney(remaining)} available after saving):`, item.amount)); if (!Number.isFinite(amount) || amount <= 0 || amount > remaining) return; item.amount = amount; saveData(); showPage('budget'); } });

@@ -1,3 +1,9 @@
+function budgetIncomeLimit(excludeId = null) {
+  const income = data.income.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const allocated = data.budgets.filter(item => item.id !== excludeId).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  return { income, allocated, remaining: Math.max(income - allocated, 0) };
+}
+
 function budgetProgress(budget) {
   const spent = data.expenses
     .filter(item => item.category === budget.category)
@@ -11,7 +17,10 @@ function budgetProgress(budget) {
 function renderBudgetHistory() {
   if (!data.budgets.length) return '<div class="empty">No budgets set yet.</div>';
 
-  return `<div class="transaction-list">${data.budgets.map(budget => {
+  const { income, allocated } = budgetIncomeLimit();
+  const overIncome = allocated > income;
+
+  return `${overIncome ? `<div class="empty negative">Your current budgets exceed total income by ${formatMoney(allocated - income)}. Reduce a budget before adding more.</div>` : ''}<div class="transaction-list">${data.budgets.map(budget => {
     const { spent, remaining, percent } = budgetProgress(budget);
     const over = remaining < 0;
     return `
@@ -34,9 +43,16 @@ function renderBudgetHistory() {
   }).join('')}</div>`;
 }
 
-pages.budget.render = () => `
+pages.budget.render = () => {
+  const { income, allocated, remaining } = budgetIncomeLimit();
+  const incomeMessage = income > 0
+    ? `<p class="muted">Total income: <strong>${formatMoney(income)}</strong> · Budgeted: <strong>${formatMoney(allocated)}</strong> · Available to budget: <strong class="${remaining > 0 ? 'positive' : ''}">${formatMoney(remaining)}</strong></p>`
+    : '<p class="muted">Add income first. Your total income determines the maximum amount you can budget.</p>';
+
+  return `
   <article class="card form-card">
     <h2>Set a budget</h2>
+    ${incomeMessage}
     <form class="form-grid" id="budgetForm">
       <label>Category
         <select name="category" required>
@@ -44,9 +60,9 @@ pages.budget.render = () => `
         </select>
       </label>
       <label>Budget amount
-        <input name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required>
+        <input name="amount" type="number" min="0.01" max="${remaining || 0}" step="0.01" placeholder="${remaining > 0 ? '0.00' : 'No amount available'}" ${income <= 0 || remaining <= 0 ? 'disabled' : ''} required>
       </label>
-      <button class="primary-button" type="submit">Save budget</button>
+      <button class="primary-button" type="submit" ${income <= 0 || remaining <= 0 ? 'disabled' : ''}>Save budget</button>
     </form>
   </article>
 
@@ -57,6 +73,7 @@ pages.budget.render = () => `
     ${renderBudgetHistory()}
   </article>
 `;
+};
 
 pageContent.addEventListener('submit', event => {
   const form = event.target;
@@ -68,6 +85,10 @@ pageContent.addEventListener('submit', event => {
   if (!Number.isFinite(amount) || amount <= 0 || !values.category) return;
 
   const existing = data.budgets.find(item => item.category === values.category);
+  const { income, allocated, remaining } = budgetIncomeLimit(existing?.id || null);
+  if (income <= 0) { alert('Add income before setting a budget.'); return; }
+  if (amount > remaining) { alert(`This budget exceeds the income available for budgeting. You can allocate up to ${formatMoney(remaining)}.`); return; }
+
   if (existing) {
     existing.amount = amount;
   } else {
@@ -99,8 +120,10 @@ pageContent.addEventListener('click', event => {
   if (edit) {
     const item = data.budgets.find(entry => entry.id === edit.dataset.editBudget);
     if (!item) return;
-    const amount = Number(prompt('Budget amount:', item.amount));
+    const { income, remaining } = budgetIncomeLimit(item.id);
+    const amount = Number(prompt(`Budget amount (maximum ${formatMoney(income)} total income; ${formatMoney(remaining)} available):`, item.amount));
     if (!Number.isFinite(amount) || amount <= 0) return;
+    if (amount > remaining) { alert(`This budget exceeds the remaining amount available from income: ${formatMoney(remaining)}.`); return; }
     item.amount = amount;
     saveData();
     showPage('budget');

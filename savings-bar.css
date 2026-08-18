@@ -1,0 +1,75 @@
+/* Savings — full-width narrow dashboard bar */
+.stats-grid > [data-savings-card] {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 68px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  background: linear-gradient(105deg, #0b1d3a 0%, #102d58 55%, #143d70 100%);
+  border: 1px solid rgba(74, 144, 226, .55);
+  box-shadow: 0 8px 24px rgba(3, 16, 36, .22), inset 0 1px 0 rgba(255,255,255,.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-grid > [data-savings-card]::before {
+  content: "";
+  width: 4px;
+  height: 34px;
+  border-radius: 99px;
+  background: #4da3ff;
+  flex: 0 0 auto;
+  box-shadow: 0 0 14px rgba(77,163,255,.55);
+}
+
+.stats-grid > [data-savings-card] .stat-label {
+  margin: 0 auto 0 0;
+  color: #f4f8ff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.stats-grid > [data-savings-card] .stat-value {
+  margin: 0;
+  color: #78c4ff;
+  font-size: clamp(20px, 3vw, 27px);
+  line-height: 1;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.stats-grid > [data-savings-card]::after {
+  content: "SAVED";
+  color: rgba(210,230,255,.72);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  padding: 6px 9px;
+  border: 1px solid rgba(120,196,255,.28);
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.stats-grid > [data-savings-card]:hover {
+  border-color: rgba(120,196,255,.8);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .stats-grid > [data-savings-card] {
+    min-height: 62px;
+    padding: 12px 16px;
+    gap: 12px;
+    border-radius: 12px;
+  }
+  .stats-grid > [data-savings-card]::before { height: 30px; }
+  .stats-grid > [data-savings-card] .stat-label { font-size: 14px; }
+  .stats-grid > [data-savings-card] .stat-value { font-size: 21px; }
+  .stats-grid > [data-savings-card]::after { font-size: 9px; padding: 5px 7px; }
+}
